@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(AronaApp());
+  runApp(AronaAssistantApp());
 }
 
-class AronaApp extends StatelessWidget {
+class AronaAssistantApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'アロナ助手',
+      title: 'Arona AI Assistant',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
       home: AronaHomePage(),
     );
   }
@@ -22,36 +25,32 @@ class AronaHomePage extends StatefulWidget {
 }
 
 class _AronaHomePageState extends State<AronaHomePage> {
-  String userInput = "";
-  List<Map<String, String>> conversation = [];
-  TextEditingController _controller = TextEditingController();
-  bool isLoading = false;
+  String aronaReply = "アロナに質問してみて！（試著問問アロナ吧！）"; // 預設回應
+  TextEditingController userInputController = TextEditingController();
+  List<Map<String, String>> conversation = []; // 儲存對話紀錄
 
+  // 送出使用者的問題並獲取 AI 回應
   Future<void> handleSend() async {
-    if (userInput.isEmpty) return;
+    String userMessage = userInputController.text;
+    if (userMessage.isEmpty) return;
 
     setState(() {
-      isLoading = true;
-      conversation.add({"role": "user", "content": userInput}); // 加入使用者訊息
-      aronaReply = "アロナが考え中...（アロナ思考中...）"; // 顯示正在思考
+      conversation.add({"role": "user", "content": userMessage});
+      aronaReply = "アロナが考え中...（アロナ思考中...）"; // 顯示思考中
     });
 
-    String apiKey = "sk-e95e3fd35f07492e8228ead26e78b706"; // 🔹 請換成你的 API Key
-    String apiUrl = "https://api.deepseek.com/v1/chat/completions";
+    userInputController.clear(); // 清空輸入框
 
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
+      var response = await http.post(
+        Uri.parse("https://api.deepseek.com/v1/chat/completions"), // 你的 Deepseek API URL
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer $apiKey",
+          "Authorization": "Bearer YOUR_DEEPSEEK_API_KEY", // 請替換成你的 API Key
         },
         body: jsonEncode({
           "model": "deepseek-chat",
-          "messages": [
-            {"role": "system", "content": "你是アロナ，Blue Archive 的 AI 助手。"},
-            {"role": "user", "content": userInput}
-          ]
+          "messages": conversation,
         }),
       );
 
@@ -59,7 +58,7 @@ class _AronaHomePageState extends State<AronaHomePage> {
         var jsonResponse = jsonDecode(response.body);
         setState(() {
           aronaReply = jsonResponse["choices"][0]["message"]["content"];
-          conversation.add({"role": "assistant", "content": aronaReply}); // 加入アロナ回應
+          conversation.add({"role": "assistant", "content": aronaReply});
         });
       } else {
         setState(() {
@@ -70,24 +69,17 @@ class _AronaHomePageState extends State<AronaHomePage> {
       setState(() {
         aronaReply = "ネットワークエラー（網路錯誤）";
       });
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("アロナ助手"),
-      ),
+      appBar: AppBar(title: Text('アロナ AI 助手')),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 顯示對話紀錄
             Expanded(
               child: ListView.builder(
                 itemCount: conversation.length,
@@ -96,32 +88,36 @@ class _AronaHomePageState extends State<AronaHomePage> {
                   return ListTile(
                     title: Text(
                       message["content"] ?? "",
+                      textAlign: message["role"] == "user"
+                          ? TextAlign.right
+                          : TextAlign.left,
                       style: TextStyle(
-                        fontWeight: message["role"] == "user" ? FontWeight.bold : FontWeight.normal,
-                        color: message["role"] == "user" ? Colors.blue : Colors.black,
+                        color: message["role"] == "user"
+                            ? Colors.blue
+                            : Colors.black,
                       ),
                     ),
-                    subtitle: message["role"] == "assistant" ? Text("アロナ的回應") : null,
                   );
                 },
               ),
             ),
-
-            // 輸入框
-            TextField(
-              controller: _controller,
-              onChanged: (text) {
-                userInput = text;
-              },
-              decoration: InputDecoration(
-                labelText: "請輸入您想說的話",
-                border: OutlineInputBorder(),
-              ),
+            Text(
+              aronaReply,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isLoading ? null : handleSend,
-              child: isLoading ? CircularProgressIndicator() : Text("送出給アロナ"),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: userInputController,
+                    decoration: InputDecoration(hintText: "訊息..."),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.send),
+                  onPressed: handleSend,
+                ),
+              ],
             ),
           ],
         ),
