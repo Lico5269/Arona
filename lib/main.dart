@@ -46,7 +46,7 @@ class _AronaHomePageState extends State<AronaHomePage> {
         Uri.parse("https://api.deepseek.com"), // 你的 Deepseek API URL
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "sk-e95e3fd35f07492e8228ead26e78b706", // 請替換成你的 API Key
+          "Authorization": "Bearer sk-e95e3fd35f07492e8228ead26e78b706", // 請替換成你的 API Key
         },
         body: jsonEncode({
           "model": "deepseek-chat",
