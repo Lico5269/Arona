@@ -2,58 +2,75 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(AronaApp());
+}
 
-class MyApp extends StatelessWidget {
+class AronaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DeepSeek Demo',
-      home: DeepSeekExample(),
+      title: 'アロナ助手',
+      home: AronaHomePage(),
     );
   }
 }
 
-class DeepSeekExample extends StatefulWidget {
+class AronaHomePage extends StatefulWidget {
   @override
-  _DeepSeekExampleState createState() => _DeepSeekExampleState();
+  _AronaHomePageState createState() => _AronaHomePageState();
 }
 
-class _DeepSeekExampleState extends State<DeepSeekExample> {
-  final TextEditingController _controller = TextEditingController();
-  String _response = "";
+class _AronaHomePageState extends State<AronaHomePage> {
+  String userInput = "";
+  String aronaReply = "こんにちは、先生！（你好，老師！）";
+  TextEditingController _controller = TextEditingController();
+  bool isLoading = false;
 
-  Future<void> _sendToDeepSeek(String input) async {
-    final url = Uri.parse("https://api.deepseek.com/chat/completions");
-    final headers = {
-      'Authorization': 'Bearer sk-e95e3fd35f07492e8228ead26e78b706',
-      'Content-Type': 'application/json',
-    };
-    final body = jsonEncode({
-      "model": "deepseek-chat",
-      "messages": [
-        {
-          "role": "system",
-          "content": "你是《蔚藍檔案》的アロナ，是一位溫柔可愛的AI助手，使用日文回答，並附上繁體中文字幕。"
-        },
-        {
-          "role": "user",
-          "content": input
-        }
-      ]
+  Future<void> handleSend() async {
+    if (userInput.isEmpty) return;
+
+    setState(() {
+      isLoading = true;
+      aronaReply = "アロナが考え中...（アロナ思考中...）";
     });
 
-    final response = await http.post(url, headers: headers, body: body);
+    String apiKey = "sk-e95e3fd35f07492e8228ead26e78b706"; // 🔹 請換成你的 API Key
+    String apiUrl = "https://api.deepseek.com/v1/chat/completions";
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final reply = data["choices"][0]["message"]["content"];
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $apiKey",
+        },
+        body: jsonEncode({
+          "model": "deepseek-chat",
+          "messages": [
+            {"role": "system", "content": "你是アロナ，Blue Archive 的 AI 助手。"},
+            {"role": "user", "content": userInput}
+          ]
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        var jsonResponse = jsonDecode(response.body);
+        setState(() {
+          aronaReply = jsonResponse["choices"][0]["message"]["content"];
+        });
+      } else {
+        setState(() {
+          aronaReply = "エラーが発生しました。（發生錯誤）";
+        });
+      }
+    } catch (e) {
       setState(() {
-        _response = reply;
+        aronaReply = "ネットワークエラー（網路錯誤）";
       });
-    } else {
+    } finally {
       setState(() {
-        _response = "出錯啦：${response.statusCode}";
+        isLoading = false;
       });
     }
   }
@@ -61,22 +78,38 @@ class _DeepSeekExampleState extends State<DeepSeekExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("DeepSeek 測試")),
+      appBar: AppBar(
+        title: Text("アロナ助手"),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
             TextField(
               controller: _controller,
-              decoration: InputDecoration(labelText: "輸入你要說的話"),
-            ),
-            ElevatedButton(
-              onPressed: () => _sendToDeepSeek(_controller.text),
-              child: Text("送出到 DeepSeek"),
+              onChanged: (text) {
+                userInput = text;
+              },
+              decoration: InputDecoration(
+                labelText: "請輸入您想說的話",
+                border: OutlineInputBorder(),
+              ),
             ),
             SizedBox(height: 20),
-            Text("DeepSeek 回應："),
-            Text(_response),
+            ElevatedButton(
+              onPressed: isLoading ? null : handleSend,
+              child: isLoading ? CircularProgressIndicator() : Text("送出給アロナ"),
+            ),
+            SizedBox(height: 30),
+            Text(
+              "アロナ的回應：",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Text(
+              aronaReply,
+              style: TextStyle(fontSize: 16),
+            ),
           ],
         ),
       ),
