@@ -23,7 +23,7 @@ class AronaHomePage extends StatefulWidget {
 
 class _AronaHomePageState extends State<AronaHomePage> {
   String userInput = "";
-  String aronaReply = "こんにちは、先生！（你好，老師！）";
+  List<Map<String, String>> conversation = [];
   TextEditingController _controller = TextEditingController();
   bool isLoading = false;
 
@@ -32,7 +32,8 @@ class _AronaHomePageState extends State<AronaHomePage> {
 
     setState(() {
       isLoading = true;
-      aronaReply = "アロナが考え中...（アロナ思考中...）";
+      conversation.add({"role": "user", "content": userInput}); // 加入使用者訊息
+      aronaReply = "アロナが考え中...（アロナ思考中...）"; // 顯示正在思考
     });
 
     String apiKey = "sk-e95e3fd35f07492e8228ead26e78b706"; // 🔹 請換成你的 API Key
@@ -58,6 +59,7 @@ class _AronaHomePageState extends State<AronaHomePage> {
         var jsonResponse = jsonDecode(response.body);
         setState(() {
           aronaReply = jsonResponse["choices"][0]["message"]["content"];
+          conversation.add({"role": "assistant", "content": aronaReply}); // 加入アロナ回應
         });
       } else {
         setState(() {
@@ -85,6 +87,27 @@ class _AronaHomePageState extends State<AronaHomePage> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
+            // 顯示對話紀錄
+            Expanded(
+              child: ListView.builder(
+                itemCount: conversation.length,
+                itemBuilder: (context, index) {
+                  var message = conversation[index];
+                  return ListTile(
+                    title: Text(
+                      message["content"] ?? "",
+                      style: TextStyle(
+                        fontWeight: message["role"] == "user" ? FontWeight.bold : FontWeight.normal,
+                        color: message["role"] == "user" ? Colors.blue : Colors.black,
+                      ),
+                    ),
+                    subtitle: message["role"] == "assistant" ? Text("アロナ的回應") : null,
+                  );
+                },
+              ),
+            ),
+
+            // 輸入框
             TextField(
               controller: _controller,
               onChanged: (text) {
@@ -99,16 +122,6 @@ class _AronaHomePageState extends State<AronaHomePage> {
             ElevatedButton(
               onPressed: isLoading ? null : handleSend,
               child: isLoading ? CircularProgressIndicator() : Text("送出給アロナ"),
-            ),
-            SizedBox(height: 30),
-            Text(
-              "アロナ的回應：",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Text(
-              aronaReply,
-              style: TextStyle(fontSize: 16),
             ),
           ],
         ),
